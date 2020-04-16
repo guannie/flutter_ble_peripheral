@@ -28,13 +28,45 @@ class Peripheral {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
             super.onStartSuccess(settingsInEffect)
             Log.i(tag, "LE Advertise Started.")
+            Log.i(tag, settingsInEffect.toString())
             //advertisingCallback(true)
             isAdvertising = true
         }
 
         override fun onStartFailure(errorCode: Int) {
             super.onStartFailure(errorCode)
-            Log.e(tag, "ERROR while starting advertising: $errorCode")
+                        var reason: String
+
+            when (errorCode) {
+                ADVERTISE_FAILED_ALREADY_STARTED -> {
+                    reason = "ADVERTISE_FAILED_ALREADY_STARTED"
+                    isAdvertising = true
+                }
+                ADVERTISE_FAILED_FEATURE_UNSUPPORTED -> {
+                    reason = "ADVERTISE_FAILED_FEATURE_UNSUPPORTED"
+                    isAdvertising = false
+                }
+                ADVERTISE_FAILED_INTERNAL_ERROR -> {
+                    reason = "ADVERTISE_FAILED_INTERNAL_ERROR"
+                    isAdvertising = false
+                }
+                ADVERTISE_FAILED_TOO_MANY_ADVERTISERS -> {
+                    reason = "ADVERTISE_FAILED_TOO_MANY_ADVERTISERS"
+                    isAdvertising = false
+                }
+                ADVERTISE_FAILED_DATA_TOO_LARGE -> {
+                    reason = "ADVERTISE_FAILED_DATA_TOO_LARGE"
+                    isAdvertising = false
+                    charLength--
+                }
+
+                else -> {
+                    reason = "UNDOCUMENTED"
+                }
+            }
+
+            //Log.e(tag, "Advertising onStartFailure: $errorCode - $reason")
+            Log.e(tag, "ERROR while starting advertising: $errorCode -$reason")
             //advertisingCallback(false)
             isAdvertising = false
         }
@@ -78,16 +110,23 @@ class Peripheral {
          * onStartFailure() method of an AdvertiseCallback implementation.
          */
         val dataBuilder = AdvertiseData.Builder()
-        dataBuilder.addServiceUuid(ParcelUuid.fromString(uuid))
         dataBuilder.setIncludeDeviceName(includeDeviceName)
-
+        dataBuilder.addServiceUuid(ParcelUuid.fromString(uuid))
+        dataBuilder.setIncludeTxPowerLevel(true)
+        dataBuilder.addManufacturerData(1023, serviceDataByteArray)
+        // from opentrace
+        //    .setIncludeDeviceName(false)
+        //    .setIncludeTxPowerLevel(true)
+        //    .addServiceUuid(pUuid)
         return dataBuilder.build()
     }
 
     /** TODO: make settings configurable */
     private fun buildAdvertiseSettings(): AdvertiseSettings? {
         val settingsBuilder = AdvertiseSettings.Builder()
-        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
+        settingsBuilder.setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+        settingsBuilder.setConnectable(true)
         settingsBuilder.setTimeout(0)
         return settingsBuilder.build()
     }
